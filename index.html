@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SentinelPay | Real-Time Payment Fraud Radar & XAI Engine</title>
+
+  <!-- Tailwind CSS with Official Typography Plugin -->
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- Tailwind Customization -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              800: '#3730a3',
+              900: '#1e1b4b',
+            },
+            danger: {
+              50: '#fef2f2',
+              500: '#ef4444',
+              600: '#dc2626',
+            },
+            success: {
+              50: '#ecfdf5',
+              500: '#10b981',
+              600: '#059669',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased font-sans flex flex-col min-h-screen selection:bg-indigo-500 selection:text-white">
+
+  <!-- ========================================== -->
+  <!-- 1. SEMANTIC HEADER & NAVIGATION            -->
+  <!-- ========================================== -->
+  <header class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white transition-all duration-300">
+    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between" aria-label="Global Navigation">
+      
+      <!-- Brand Logo -->
+      <a href="#hero" class="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded-lg p-1">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-emerald-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-indigo-500/30 group-hover:scale-105 transition-transform">
+          <i class="fa-solid fa-shield-halved text-lg"></i>
+        </div>
+        <div>
+          <span class="text-xl font-extrabold tracking-tight text-white">Sentinel<span class="text-indigo-400">Pay</span></span>
+          <span class="hidden sm:inline-block text-[10px] uppercase font-bold tracking-widest bg-slate-800 text-indigo-300 px-2 py-0.5 rounded ml-2 border border-slate-700">Enterprise XAI</span>
+        </div>
+      </a>
+
+      <!-- Desktop Navigation Menu -->
+      <ul class="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-300">
+        <li>
+          <a href="#radar" class="hover:text-indigo-400 transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-satellite-dish text-xs text-indigo-400"></i> Live Radar
+          </a>
+        </li>
+        <li>
+          <a href="#features" class="hover:text-indigo-400 transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-microchip text-xs text-indigo-400"></i> Core Engines
+          </a>
+        </li>
+        <li>
+          <a href="#explainability" class="hover:text-indigo-400 transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-brain text-xs text-indigo-400"></i> XAI Brief
+          </a>
+        </li>
+        <li>
+          <a href="#compliance" class="hover:text-indigo-400 transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-scale-balanced text-xs text-indigo-400"></i> Governance
+          </a>
+        </li>
+      </ul>
+
+      <!-- Action Buttons & Mobile Hamburger -->
+      <div class="flex items-center gap-3">
+        <a href="#radar" class="hidden sm:inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-sm transition-all focus:ring-2 focus:ring-indigo-400 focus:outline-none">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          Ops Console
+        </a>
+
+        <!-- Mobile Menu Toggle Button -->
+        <button id="mobileMenuBtn" type="button" aria-expanded="false" aria-controls="mobileMenu" class="md:hidden text-slate-300 hover:text-white p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 rounded-md">
+          <span class="sr-only">Open main menu</span>
+          <i id="menuIcon" class="fa-solid fa-bars text-xl"></i>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Mobile Dropdown Navigation -->
+    <div id="mobileMenu" class="hidden md:hidden border-t border-slate-800 bg-slate-900/98 px-4 pt-3 pb-5 space-y-2">
+      <a href="#radar" class="block px-3 py-2 rounded-md text-base font-medium text-slate-200 hover:bg-slate-800 hover:text-indigo-400"><i class="fa-solid fa-satellite-dish mr-2 text-indigo-400"></i> Live Radar</a>
+      <a href="#features" class="block px-3 py-2 rounded-md text-base font-medium text-slate-200 hover:bg-slate-800 hover:text-indigo-400"><i class="fa-solid fa-microchip mr-2 text-indigo-400"></i> Core Engines</a>
+      <a href="#explainability" class="block px-3 py-2 rounded-md text-base font-medium text-slate-200 hover:bg-slate-800 hover:text-indigo-400"><i class="fa-solid fa-brain mr-2 text-indigo-400"></i> XAI Brief</a>
+      <a href="#compliance" class="block px-3 py-2 rounded-md text-base font-medium text-slate-200 hover:bg-slate-800 hover:text-indigo-400"><i class="fa-solid fa-scale-balanced mr-2 text-indigo-400"></i> Governance</a>
+      <a href="#radar" class="block w-full text-center mt-3 bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg text-sm">Launch Ops Console</a>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- 2. MAIN CONTENT WRAPPER                    -->
+  <!-- ========================================== -->
+  <main class="flex-grow">
+
+    <!-- HERO SECTION -->
+    <section id="hero" class="relative bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-white py-20 lg:py-28 overflow-hidden">
+      <!-- Decorative Backdrop Glow -->
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(99,102,241,0.15),transparent_50%)] pointer-events-none"></div>
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(16,185,129,0.12),transparent_50%)] pointer-events-none"></div>
+
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+        <!-- Sub-Badge -->
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-indigo-300 text-xs font-semibold mb-6 animate-pulse">
+          <i class="fa-solid fa-shield-cat text-emerald-400"></i> Next-Gen Instant Payment Security
+        </div>
+
+        <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight max-w-4xl mx-auto leading-tight sm:leading-none">
+          Stop Instant Payment Fraud <span class="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-sky-300 to-emerald-400">Sub-Second</span> With Explainable AI.
+        </h1>
+
+        <p class="mt-6 text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          Real-time payment rails (UPI, FedNow, RTP) settle irrevocably within seconds. SentinelPay bridges unsupervised anomaly detection with automated plain-English narrative triage for fraud compliance teams.
+        </p>
+
+        <!-- CTA Action Cluster -->
+        <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <a href="#radar" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm shadow-xl shadow-indigo-600/20 hover:shadow-indigo-500/30 transition-all transform hover:-translate-y-0.5">
+            <i class="fa-solid fa-bolt text-yellow-300"></i> Explore Live Transaction Radar
+          </a>
+          <a href="#explainability" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-sm transition-colors">
+            <i class="fa-solid fa-book-open text-slate-400"></i> Read Architectural Specs
+          </a>
+        </div>
+
+        <!-- Telemetry Statistics Strip -->
+        <div class="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto border-t border-slate-800 pt-8 text-left">
+          <div class="p-3 bg-slate-800/30 rounded-lg border border-slate-800/80">
+            <div class="text-2xl font-black text-indigo-400">&lt; 180ms</div>
+            <div class="text-xs text-slate-400 mt-0.5">Decision Latency</div>
+          </div>
+          <div class="p-3 bg-slate-800/30 rounded-lg border border-slate-800/80">
+            <div class="text-2xl font-black text-emerald-400">99.4%</div>
+            <div class="text-xs text-slate-400 mt-0.5">Anomaly Precision</div>
+          </div>
+          <div class="p-3 bg-slate-800/30 rounded-lg border border-slate-800/80">
+            <div class="text-2xl font-black text-sky-400">0% Black-Box</div>
+            <div class="text-xs text-slate-400 mt-0.5">SHAP-Engineered Triage</div>
+          </div>
+          <div class="p-3 bg-slate-800/30 rounded-lg border border-slate-800/80">
+            <div class="text-2xl font-black text-purple-400">RBI & DORA</div>
+            <div class="text-xs text-slate-400 mt-0.5">Compliant Audit Trail</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTENT SECTION 1: INTERACTIVE REAL-TIME RADAR (DEMO COMPONENT) -->
+    <section id="radar" class="py-16 bg-slate-100 border-b border-slate-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-8">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200">Operational Dashboard</span>
+            <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">Live Transaction Scoring Stream</h2>
+            <p class="text-sm text-slate-600 mt-1">Simulated sub-second telemetry ingestion showing real-time ML risk inference.</p>
+          </div>
+          
+          <!-- Filter Controls (Demonstrates Interactive Logic) -->
+          <div class="mt-4 md:mt-0 flex items-center gap-2">
+            <span class="text-xs font-semibold text-slate-500 mr-1">Filter Risk:</span>
+            <button onclick="filterTransactions('all')" class="filter-btn text-xs px-3 py-1.5 rounded-md font-medium bg-slate-900 text-white transition-colors" data-filter="all">All</button>
+            <button onclick="filterTransactions('high')" class="filter-btn text-xs px-3 py-1.5 rounded-md font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors" data-filter="high">High Risk (Blocked)</button>
+            <button onclick="filterTransactions('low')" class="filter-btn text-xs px-3 py-1.5 rounded-md font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors" data-filter="low">Legitimate (Passed)</button>
+          </div>
+        </div>
+
+        <!-- Dynamic Transaction Stream Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          <!-- Transaction 1: High Risk Anomaly -->
+          <div class="tx-card bg-white rounded-xl shadow-sm border border-red-200 p-5 relative overflow-hidden transition-all hover:shadow-md" data-risk="high">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-red-500"></div>
+            <div class="flex justify-between items-start mb-3">
+              <div>
+                <span class="text-xs font-mono text-slate-400">TXID: #8942-UPI</span>
+                <h3 class="font-bold text-slate-900 text-base">₹84,500.00</h3>
+              </div>
+              <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
+                <i class="fa-solid fa-circle-exclamation"></i> Risk 94% · Quarantined
+              </span>
+            </div>
+            
+            <div class="space-y-1.5 text-xs text-slate-600 mb-4 font-mono">
+              <div class="flex justify-between"><span>Sender Device:</span> <span class="text-slate-900 font-medium">New Fingerprint (iOS 17)</span></div>
+              <div class="flex justify-between"><span>Geo-Delta:</span> <span class="text-red-600 font-bold">Bengaluru &rarr; Sofia (4 min)</span></div>
+              <div class="flex justify-between"><span>Velocity Spike:</span> <span class="text-red-600 font-bold">14.2x 30d Average</span></div>
+            </div>
+
+            <!-- Explainable AI Explanation Snippet -->
+            <div class="bg-red-50/70 border border-red-100 rounded-lg p-3 text-xs text-slate-700 leading-relaxed">
+              <p class="font-semibold text-red-900 flex items-center gap-1.5 mb-1">
+                <i class="fa-solid fa-robot text-red-600"></i> Doppelgänger / XAI Triage:
+              </p>
+              "Critical anomaly: Impossible geographic displacement (9,200 km jump within 4 minutes of last valid UPI PIN authentication). Transfer halted prior to settlement."
+            </div>
+          </div>
+
+          <!-- Transaction 2: Normal Clean Transaction -->
+          <div class="tx-card bg-white rounded-xl shadow-sm border border-emerald-200 p-5 relative overflow-hidden transition-all hover:shadow-md" data-risk="low">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
+            <div class="flex justify-between items-start mb-3">
+              <div>
+                <span class="text-xs font-mono text-slate-400">TXID: #8943-RTP</span>
+                <h3 class="font-bold text-slate-900 text-base">₹3,240.00</h3>
+              </div>
+              <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                <i class="fa-solid fa-circle-check"></i> Risk 4% · Approved
+              </span>
+            </div>
+
+            <div class="space-y-1.5 text-xs text-slate-600 mb-4 font-mono">
+              <div class="flex justify-between"><span>Sender Device:</span> <span class="text-slate-900 font-medium">Recognized Knox Profile</span></div>
+              <div class="flex justify-between"><span>Merchant Type:</span> <span class="text-slate-900 font-medium">Recurring Utility (Bescom)</span></div>
+              <div class="flex justify-between"><span>Velocity Vector:</span> <span class="text-emerald-600 font-semibold">Nominal Monthly Cycle</span></div>
+            </div>
+
+            <div class="bg-emerald-50/70 border border-emerald-100 rounded-lg p-3 text-xs text-slate-700 leading-relaxed">
+              <p class="font-semibold text-emerald-900 flex items-center gap-1.5 mb-1">
+                <i class="fa-solid fa-robot text-emerald-600"></i> Doppelgänger / XAI Triage:
+              </p>
+              "Transaction fully conforms to historical behavioral vectors. Verified local cell-tower triangulation match. Zero friction approval dispatched."
+            </div>
+          </div>
+
+          <!-- Transaction 3: Moderate Risk Step-Up Challenge -->
+          <div class="tx-card bg-white rounded-xl shadow-sm border border-amber-200 p-5 relative overflow-hidden transition-all hover:shadow-md" data-risk="high">
+            <div class="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
+            <div class="flex justify-between items-start mb-3">
+              <div>
+                <span class="text-xs font-mono text-slate-400">TXID: #8944-IMPS</span>
+                <h3 class="font-bold text-slate-900 text-base">₹22,900.00</h3>
+              </div>
+              <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                <i class="fa-solid fa-triangle-exclamation"></i> Risk 68% · 2FA Challenge
+              </span>
+            </div>
+
+            <div class="space-y-1.5 text-xs text-slate-600 mb-4 font-mono">
+              <div class="flex justify-between"><span>Sender Device:</span> <span class="text-slate-900 font-medium">Whitelisted Chrome Browser</span></div>
+              <div class="flex justify-between"><span>Beneficiary:</span> <span class="text-amber-700 font-bold">Unregistered Beneficiary</span></div>
+              <div class="flex justify-between"><span>Time Variance:</span> <span class="text-amber-700 font-bold">03:42 AM (Off-pattern)</span></div>
+            </div>
+
+            <div class="bg-amber-50/70 border border-amber-100 rounded-lg p-3 text-xs text-slate-700 leading-relaxed">
+              <p class="font-semibold text-amber-900 flex items-center gap-1.5 mb-1">
+                <i class="fa-solid fa-robot text-amber-600"></i> Doppelgänger / XAI Triage:
+              </p>
+              "Unusual nocturnal debit velocity targeting new entity. Isolation forest flagged boundary drift. Dynamic biometric challenge invoked."
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTENT SECTION 2: CORE PILLARS / PLATFORM MODULES -->
+    <section id="features" class="py-20 bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <div class="text-center max-w-3xl mx-auto mb-16">
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200">Modular Microservice Architecture</span>
+          <h2 class="text-3xl font-extrabold text-slate-900 mt-3">Engineered for Instant Payment Rail Latency</h2>
+          <p class="text-base text-slate-600 mt-2">Integrating machine learning inference directly inside the real-time banking routing switch.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          
+          <!-- Pillar 1 -->
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-7 hover:border-indigo-400 transition-all hover:shadow-lg group">
+            <div class="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl mb-6 group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-wave-square"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Unsupervised Isolation Forests</h3>
+            <p class="text-sm text-slate-600 leading-relaxed mb-4">
+              Detects zero-day fraud mechanics without waiting for labeled chargebacks. Profiles multidimensional spending surfaces across velocity, device metrics, and peer clustering.
+            </p>
+            <ul class="text-xs font-medium text-slate-500 space-y-1.5">
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-500"></i> Tree depth outlier scoring</li>
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-500"></i> Automatic concept drift recalibration</li>
+            </ul>
+          </div>
+
+          <!-- Pillar 2 -->
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-7 hover:border-indigo-400 transition-all hover:shadow-lg group">
+            <div class="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xl mb-6 group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-comment-nodes"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Automated SAR Narratives</h3>
+            <p class="text-sm text-slate-600 leading-relaxed mb-4">
+              Eliminates the "black-box" dilemma for compliance officers. Converts localized SHAP mathematical vectors into regulatory-ready Suspicious Activity Reports (SAR).
+            </p>
+            <ul class="text-xs font-medium text-slate-500 space-y-1.5">
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-500"></i> Human-readable plain English reasoning</li>
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-500"></i> 70% reduction in analyst review duration</li>
+            </ul>
+          </div>
+
+          <!-- Pillar 3 -->
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-7 hover:border-indigo-400 transition-all hover:shadow-lg group">
+            <div class="w-12 h-12 rounded-xl bg-sky-600 text-white flex items-center justify-center text-xl mb-6 group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-fingerprint"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-2">Behavioral Biometrics</h3>
+            <p class="text-sm text-slate-600 leading-relaxed mb-4">
+              Constructs passive Doppelgänger profiles from typing cadences, swipe curvature, and gyroscope motion without storing invasive personal privacy data.
+            </p>
+            <ul class="text-xs font-medium text-slate-500 space-y-1.5">
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-500"></i> Bot and remote access detection</li>
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-500"></i> SIM-swap & synthetic ID resistance</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- CONTENT SECTION 3: TECHNICAL ARTICLE USING TAILWIND TYPOGRAPHY PLUGIN   -->
+    <!-- (Strict requirement: uses the 'prose' class from the Typography plugin)  -->
+    <!-- ========================================================================= -->
+    <section id="explainability" class="py-20 bg-slate-50 border-t border-b border-slate-200">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Semantic Article Element styled using Tailwind Typography classes -->
+        <article class="prose prose-slate lg:prose-lg max-w-none bg-white p-8 sm:p-12 rounded-2xl shadow-sm border border-slate-200">
+          
+          <header class="not-prose border-b border-slate-200 pb-6 mb-8">
+            <div class="flex items-center gap-2 text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">
+              <i class="fa-solid fa-file-lines"></i> Research Specification & Technical Whitepaper
+            </div>
+            <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">
+              Solving the Black-Box Paradox in Sub-Second Financial Rails
+            </h2>
+            <p class="text-sm text-slate-500 mt-2">
+              Author: SentinelPay Engineering Lab &middot; Academic Reference: MAI412-2 Full Stack Development
+            </p>
+          </header>
+
+          <p class="lead text-slate-700">
+            In modern financial technology, instant payment mechanisms such as India’s Unified Payments Interface (UPI) and the US FedNow system settle transactions irreversibly in fewer than two seconds. While this speed is a triumph of digital infrastructure, it fundamentally changes the cybersecurity equation: <strong>once funds depart the debtor's account, recovery via traditional recall is virtually zero.</strong>
+          </p>
+
+          <h3>The Limitations of Legacy Heuristic Rules</h3>
+          <p>
+            Traditional banking systems rely heavily on deterministic <em>if-then</em> rule engines (e.g., <code>IF transaction_amount > 50000 AND time == nocturnal THEN flag</code>). These legacy systems suffer from two systemic failures:
+          </p>
+          <ul>
+            <li><strong>High False-Positive Friction:</strong> Upwards of 85% of transactions halted by traditional rules are legitimate users making atypical purchases, eroding consumer trust.</li>
+            <li><strong>Vulnerability to Low-and-Slow Attacks:</strong> Modern syndicates deliberately orchestrate transactions just below static threshold values to bypass manual rules entirely.</li>
+          </ul>
+
+          <blockquote>
+            "Machine learning without explainability creates a liability for chartered banks. If an autonomous model rejects an innocent customer's transaction without explainable recourse, it violates statutory fair lending and transparent banking directives."
+          </blockquote>
+
+          <h3>The SentinelPay Architecture: Fusion of ML & Generative XAI</h3>
+          <p>
+            SentinelPay addresses this dilemma by deploying a bifurcated inference pipeline:
+          </p>
+          <ol>
+            <li>
+              <strong>Lightweight Anomaly Detection at the Edge:</strong> A sub-50ms ensemble model assigns a risk index $R \in [0, 1]$ to streaming JSON payloads using isolated decision trees.
+            </li>
+            <li>
+              <strong>Localized Additive Explanations (SHAP):</strong> If $R \ge 0.65$, feature attribution vectors isolate the highest contributing anomalies (e.g., rapid IP geodelta or deviation from user baseline velocity).
+            </li>
+            <li>
+              <strong>Generative Narrative Synthesis:</strong> The SHAP vector is mapped into an automated natural language narrative, supplying compliance officers with immediate context rather than cryptic numerical matrices.
+            </li>
+          </ol>
+
+          <div class="not-prose bg-slate-900 text-slate-100 rounded-xl p-5 my-6 font-mono text-xs overflow-x-auto">
+            <div class="text-slate-400 mb-2">// Sample Output: Telemetry Ingest & Explainability Vector</div>
+            <pre><code>{
+  "transaction_id": "tx_2026_998124_upi",
+  "anomaly_score": 0.942,
+  "action": "QUARANTINE_PRE_SETTLEMENT",
+  "shap_primary_vectors": {
+    "geo_velocity_kmh": 4120.5,
+    "recipient_reputation_score": 0.12,
+    "user_hourly_variance": 0.89
+  },
+  "sar_narrative": "Impossible geographic displacement detected. High risk of SIM-cloning."
+}</code></pre>
+          </div>
+
+          <p>
+            By bridging high-throughput data processing with human-interpretable reasoning, SentinelPay ensures institutional compliance with global operational resilience directives like the European Union's <em>DORA</em> and statutory mandates from the <em>Reserve Bank of India</em>.
+          </p>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- CONTENT SECTION 4: REGULATORY GOVERNANCE & COMPLIANCE -->
+    <section id="compliance" class="py-16 bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-8 sm:p-12 text-white shadow-xl relative overflow-hidden">
+          <div class="max-w-3xl">
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded border border-emerald-800">Regulatory Adherence</span>
+            <h2 class="text-2xl sm:text-3xl font-extrabold mt-3">Built for High-Stakes Institutional Oversight</h2>
+            <p class="mt-3 text-slate-300 text-sm sm:text-base leading-relaxed">
+              Financial technology companies cannot afford regulatory drift. SentinelPay produces cryptographic, tamper-evident audit logs conforming to the most stringent international compliance standards.
+            </p>
+
+            <div class="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4">
+                <div class="text-indigo-400 text-lg mb-1"><i class="fa-solid fa-landmark"></i></div>
+                <div class="font-bold text-sm text-white">RBI Directives</div>
+                <div class="text-xs text-slate-400 mt-1">Full domestic data localization and 24-hour mandatory cyber reporting hooks.</div>
+              </div>
+
+              <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4">
+                <div class="text-emerald-400 text-lg mb-1"><i class="fa-solid fa-shield-virus"></i></div>
+                <div class="font-bold text-sm text-white">EU DORA Ready</div>
+                <div class="text-xs text-slate-400 mt-1">Digital Operational Resilience compliance with continuous penetration testing telemetry.</div>
+              </div>
+
+              <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-4">
+                <div class="text-sky-400 text-lg mb-1"><i class="fa-solid fa-lock"></i></div>
+                <div class="font-bold text-sm text-white">PCI-DSS 4.0</div>
+                <div class="text-xs text-slate-400 mt-1">Zero raw plain-text PAN/PIN ingestion with end-to-end tokenization pipelines.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- 3. SEMANTIC FOOTER                         -->
+  <!-- ========================================== -->
+  <footer class="bg-slate-950 border-t border-slate-800 text-slate-400 text-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+        
+        <!-- Col 1: System Info -->
+        <div class="space-y-3">
+          <div class="flex items-center gap-2 text-white font-bold text-base">
+            <div class="w-6 h-6 rounded bg-indigo-600 flex items-center justify-center text-xs text-white">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            SentinelPay
+          </div>
+          <p class="text-slate-500 leading-relaxed text-xs">
+            Explainable AI Fraud Radar for Instant Payment Rails. Bridging machine intelligence with human-interpretable compliance triage.
+          </p>
+          <div class="flex items-center gap-2 text-[11px] text-emerald-400">
+            <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            All detection microservices operational (100% uptime)
+          </div>
+        </div>
+
+        <!-- Col 2: Navigation Links -->
+        <div>
+          <div class="font-bold text-slate-200 uppercase tracking-wider mb-3 text-[11px]">System Modules</div>
+          <ul class="space-y-2">
+            <li><a href="#radar" class="hover:text-indigo-400 transition-colors">Streaming Transaction Radar</a></li>
+            <li><a href="#features" class="hover:text-indigo-400 transition-colors">Isolation Forest Pipelines</a></li>
+            <li><a href="#explainability" class="hover:text-indigo-400 transition-colors">SHAP Triage Specifications</a></li>
+            <li><a href="#compliance" class="hover:text-indigo-400 transition-colors">DORA & RBI Frameworks</a></li>
+          </ul>
+        </div>
+
+        <!-- Col 3: Tech Stack & Verification -->
+        <div>
+          <div class="font-bold text-slate-200 uppercase tracking-wider mb-3 text-[11px]">Underlying Stack</div>
+          <ul class="space-y-1.5 text-slate-500">
+            <li><i class="fa-brands fa-html5 text-indigo-400 mr-1.5"></i> HTML5 Semantic Engine</li>
+            <li><i class="fa-brands fa-css3-alt text-indigo-400 mr-1.5"></i> Tailwind CSS &amp; Typography</li>
+            <li><i class="fa-brands fa-python text-indigo-400 mr-1.5"></i> Scikit-Learn Anomaly Core</li>
+            <li><i class="fa-brands fa-node-js text-indigo-400 mr-1.5"></i> Node.js Gateway &amp; WebSockets</li>
+          </ul>
+        </div>
+
+        <!-- Col 4: Academic Attribution -->
+        <div>
+          <div class="font-bold text-slate-200 uppercase tracking-wider mb-3 text-[11px]">Course Credential</div>
+          <p class="text-slate-500 leading-relaxed">
+            Exercise-1: Responsive Webpage Layout using Tailwind CSS.
+          </p>
+          <p class="text-slate-400 font-semibold mt-1">
+            Department of Computer Science<br>
+            CHRIST (Deemed to be University), Bangalore
+          </p>
+        </div>
+
+      </div>
+
+      <div class="border-t border-slate-900 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
+        <p>&copy; 2026 SentinelPay Systems. Designed for Academic Prototype Submission.</p>
+        <div class="flex gap-4">
+          <a href="#" class="hover:text-slate-300">Privacy Protocols</a>
+          <a href="#" class="hover:text-slate-300">Terms of Governance</a>
+          <a href="#" class="hover:text-slate-300">API Documentation</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================== -->
+  <!-- 4. CLIENT INTERACTIVITY SCRIPT             -->
+  <!-- ========================================== -->
+  <script>
+    // Responsive Mobile Menu Toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const menuIcon = document.getElementById('menuIcon');
+
+    mobileMenuBtn.addEventListener('click', () => {
+      const isExpanded = mobileMenuBtn.getAttribute('aria-expanded') === 'true';
+      mobileMenuBtn.setAttribute('aria-expanded', !isExpanded);
+      mobileMenu.classList.toggle('hidden');
+      menuIcon.classList.toggle('fa-bars');
+      menuIcon.classList.toggle('fa-xmark');
+    });
+
+    // Close mobile menu when a nav link is clicked
+    document.querySelectorAll('#mobileMenu a').forEach(link => {
+      link.addEventListener('click', () => {
+        mobileMenu.classList.add('hidden');
+        mobileMenuBtn.setAttribute('aria-expanded', 'false');
+        menuIcon.classList.add('fa-bars');
+        menuIcon.classList.remove('fa-xmark');
+      });
+    });
+
+    // Interactive Transaction Filter
+    function filterTransactions(filterType) {
+      const cards = document.querySelectorAll('.tx-card');
+      const buttons = document.querySelectorAll('.filter-btn');
+
+      // Update button styling
+      buttons.forEach(btn => {
+        if (btn.getAttribute('data-filter') === filterType) {
+          btn.className = "filter-btn text-xs px-3 py-1.5 rounded-md font-medium bg-slate-900 text-white transition-colors";
+        } else {
+          btn.className = "filter-btn text-xs px-3 py-1.5 rounded-md font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors";
+        }
+      });
+
+      // Filter cards
+      cards.forEach(card => {
+        const risk = card.getAttribute('data-risk');
+        if (filterType === 'all' || risk === filterType) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>
