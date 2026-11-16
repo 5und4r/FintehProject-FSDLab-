@@ -1,0 +1,12 @@
+# Node dependencies across all folders (server and client)
+node_modules/
+**/node_modules/
+
+# Environment variables and secrets
+.env
+.env.local
+
+# Logs and OS metadata
+npm-debug.log*
+.DS_Store
+Thumbs.db

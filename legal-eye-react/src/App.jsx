@@ -1,85 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
-// ============================================================================
-// LEGAL EYE: REACT TRANSACTION AUDIT & CRUD ENGINE (LAB EXERCISES 5 & 6)
-// Built with React Functional Components, Hooks, Form Handling & LocalStorage
-// ============================================================================
-
-const STORAGE_KEY = 'legalEye_react_crud_v2';
-
-// Initial Mock Seed Data
-const INITIAL_TRANSACTIONS = [
-  {
-    id: 'TX-948201',
-    sender: 'rahul.sharma@okaxis',
-    beneficiary: 'merchant.intl@swiftwire',
-    amount: 145000,
-    rail: 'NPCI_UPI_2.0',
-    device: 'Unrecognized Phone',
-    verdict: 'HALTED',
-    riskScore: 96.8,
-    timestamp: '2026-10-05 10:14:22'
-  },
-  {
-    id: 'TX-552109',
-    sender: 'enterprise.ops@chase',
-    beneficiary: 'aws.cloud@bofa',
-    amount: 2400,
-    rail: 'US_FEDNOW',
-    device: 'Trusted Everyday Smartphone',
-    verdict: 'CLEARED',
-    riskScore: 2.1,
-    timestamp: '2026-10-05 10:18:05'
-  },
-  {
-    id: 'TX-948202',
-    sender: 'priya.k@icici',
-    beneficiary: 'mule.drain.99@ybl',
-    amount: 199999,
-    rail: 'NPCI_UPI_2.0',
-    device: 'SIM Swap Flagged (<24h)',
-    verdict: 'BLOCKED',
-    riskScore: 99.1,
-    timestamp: '2026-10-05 10:22:40'
-  },
-  {
-    id: 'TX-339182',
-    sender: 'lukas.weber@n26',
-    beneficiary: 'metro.transit@berlin',
-    amount: 35.5,
-    rail: 'EU_SEPA_INSTANT',
-    device: 'Trusted Everyday Smartphone',
-    verdict: 'CLEARED',
-    riskScore: 0.8,
-    timestamp: '2026-10-05 10:26:11'
-  }
-];
+const API_BASE_URL = 'http://localhost:3001/transactions';
 
 export default function App() {
-  // --------------------------------------------------------------------------
-  // STATE MANAGEMENT (React useState Hook)
-  // --------------------------------------------------------------------------
-  const [transactions, setTransactions] = useState(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : INITIAL_TRANSACTIONS;
-    } catch (e) {
-      console.error('Failed reading from localStorage:', e);
-      return INITIAL_TRANSACTIONS;
-    }
-  });
+  // MongoDB Documents State
+  const [transactions, setTransactions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [serverConnected, setServerConnected] = useState(false);
 
-  // Active View Tab State
+  // Navigation Tab State
   const [activeTab, setActiveTab] = useState('crud');
 
-  // Search and Filter State (Bonus Requirement)
+  // Search & Verdict Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [filterVerdict, setFilterVerdict] = useState('ALL');
 
-  // Edit / Update Form State
+  // Edit / Update State (Tracks MongoDB _id)
   const [editingTransaction, setEditingTransaction] = useState(null);
 
-  // Form Fields State
+  // Controlled Form Fields State
   const [formData, setFormData] = useState({
     sender: '',
     beneficiary: '',
@@ -89,20 +28,65 @@ export default function App() {
     verdict: 'CLEARED'
   });
 
-  // In-App Toast & Modal Feedback (Strictly No alert() or confirm())
+  // In-App Toast & Delete Confirmation Modal State
   const [toastMessage, setToastMessage] = useState(null);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
 
-  // Synchronize state changes to Local Storage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
-    } catch (e) {
-      console.error('Failed writing to localStorage:', e);
-    }
-  }, [transactions]);
+  const triggerToast = (title, text, type = 'success') => {
+    setToastMessage({ title, text, type });
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4200);
+  };
 
-  // Synchronize Form Fields when editingTransaction changes
+  const resetForm = () => {
+    setFormData({
+      sender: '',
+      beneficiary: '',
+      amount: '',
+      rail: 'NPCI_UPI_2.0',
+      device: 'Trusted Everyday Smartphone',
+      verdict: 'CLEARED'
+    });
+  };
+
+  // --------------------------------------------------------------------------
+  // READ & SEARCH -> GET /transactions & GET /transactions/search/:query
+  // --------------------------------------------------------------------------
+  const fetchTransactions = useCallback(async (query = '') => {
+    try {
+      setIsLoading(true);
+      const trimmed = query.trim();
+      const endpoint = trimmed
+        ? `${API_BASE_URL}/search/${encodeURIComponent(trimmed)}`
+        : API_BASE_URL;
+
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      setTransactions(Array.isArray(data) ? data : []);
+      setServerConnected(true);
+    } catch (err) {
+      console.error('API Fetch Error:', err);
+      setServerConnected(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch initial MongoDB records and run debounced backend search on query change
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      fetchTransactions(searchQuery);
+    }, 220);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery, fetchTransactions]);
+
+  // Populate form when editing an existing MongoDB document
   useEffect(() => {
     if (editingTransaction) {
       setFormData({
@@ -118,35 +102,15 @@ export default function App() {
     }
   }, [editingTransaction]);
 
-  // Notification Helper
-  const triggerToast = (title, text, type = 'success') => {
-    setToastMessage({ title, text, type });
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
-  };
-
-  const resetForm = () => {
-    setFormData({
-      sender: '',
-      beneficiary: '',
-      amount: '',
-      rail: 'NPCI_UPI_2.0',
-      device: 'Trusted Everyday Smartphone',
-      verdict: 'CLEARED'
-    });
-  };
-
-  // Form Field Change Handler
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   // --------------------------------------------------------------------------
-  // CRUD OPERATION 1: CREATE & UPDATE (Form Submit)
+  // CREATE (POST /transactions) & UPDATE (PUT /transactions/:id)
   // --------------------------------------------------------------------------
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!formData.sender.trim() || !formData.beneficiary.trim() || !formData.amount) {
@@ -160,104 +124,114 @@ export default function App() {
       return;
     }
 
-    // Dynamic Risk Score Assessment
-    let calculatedRisk = 4.2;
-    if (formData.verdict === 'BLOCKED') calculatedRisk = 98.4;
-    else if (formData.verdict === 'HALTED') calculatedRisk = 88.7;
-    else if (formData.device.includes('SIM Swap') || formData.device.includes('Rooted')) calculatedRisk = 76.5;
+    const payload = {
+      sender: formData.sender.trim(),
+      beneficiary: formData.beneficiary.trim(),
+      amount: numericAmount,
+      rail: formData.rail,
+      device: formData.device,
+      verdict: formData.verdict
+    };
 
-    if (editingTransaction) {
-      // UPDATE OPERATION
-      const updatedList = transactions.map((tx) => {
-        if (tx.id === editingTransaction.id) {
-          return {
-            ...tx,
-            sender: formData.sender.trim(),
-            beneficiary: formData.beneficiary.trim(),
-            amount: numericAmount,
-            rail: formData.rail,
-            device: formData.device,
-            verdict: formData.verdict,
-            riskScore: calculatedRisk
-          };
-        }
-        return tx;
+    try {
+      if (editingTransaction) {
+        // UPDATE OPERATION -> PUT /transactions/:id
+        const response = await fetch(`${API_BASE_URL}/${editingTransaction._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Update failed');
+
+        triggerToast('MongoDB Updated', result.message);
+        setEditingTransaction(null);
+      } else {
+        // CREATE OPERATION -> POST /transactions
+        const response = await fetch(API_BASE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Create failed');
+
+        triggerToast('Saved to MongoDB', result.message);
+        resetForm();
+      }
+
+      fetchTransactions(searchQuery);
+    } catch (err) {
+      triggerToast(
+        'Server Connection Error',
+        'Ensure MongoDB is running and Express server is active on Port 3001.',
+        'error'
+      );
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // DELETE -> DELETE /transactions/:id
+  // --------------------------------------------------------------------------
+  const confirmDelete = async () => {
+    if (!deleteCandidate) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/${deleteCandidate._id}`, {
+        method: 'DELETE'
       });
 
-      setTransactions(updatedList);
-      triggerToast('Record Updated', `Audit record ${editingTransaction.id} successfully updated.`);
-      setEditingTransaction(null);
-    } else {
-      // CREATE OPERATION
-      const newId = `TX-${Math.floor(100000 + Math.random() * 900000)}`;
-      const now = new Date();
-      const timestamp = `${now.toISOString().split('T')[0]} ${now.toLocaleTimeString()}`;
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Delete failed');
 
-      const newRecord = {
-        id: newId,
-        sender: formData.sender.trim(),
-        beneficiary: formData.beneficiary.trim(),
-        amount: numericAmount,
-        rail: formData.rail,
-        device: formData.device,
-        verdict: formData.verdict,
-        riskScore: calculatedRisk,
-        timestamp
-      };
-
-      setTransactions([newRecord, ...transactions]);
-      triggerToast('Record Created', `Transaction ${newId} logged to persistent ledger.`);
-      resetForm();
+      triggerToast('Deleted from MongoDB', result.message, 'warning');
+      if (editingTransaction?._id === deleteCandidate._id) {
+        setEditingTransaction(null);
+      }
+      setDeleteCandidate(null);
+      fetchTransactions(searchQuery);
+    } catch (err) {
+      triggerToast('Delete Failed', err.message, 'error');
+      setDeleteCandidate(null);
     }
   };
 
-  // --------------------------------------------------------------------------
-  // CRUD OPERATION 2: DELETE (With In-App Confirmation Modal)
-  // --------------------------------------------------------------------------
-  const confirmDelete = () => {
-    if (!deleteCandidate) return;
-    const remaining = transactions.filter((tx) => tx.id !== deleteCandidate.id);
-    setTransactions(remaining);
-    triggerToast('Record Purged', `Record ${deleteCandidate.id} removed from LocalStorage.`, 'warning');
-    setDeleteCandidate(null);
-    if (editingTransaction?.id === deleteCandidate.id) {
-      setEditingTransaction(null);
-    }
-  };
-
-  // --------------------------------------------------------------------------
-  // CRUD OPERATION 3 & BONUS: READ WITH SEARCH & FILTER
-  // --------------------------------------------------------------------------
-  const filteredRecords = transactions.filter((tx) => {
-    const query = searchQuery.toLowerCase().trim();
-    const matchesSearch =
-      tx.id.toLowerCase().includes(query) ||
-      tx.sender.toLowerCase().includes(query) ||
-      tx.beneficiary.toLowerCase().includes(query) ||
-      tx.rail.toLowerCase().includes(query) ||
-      tx.device.toLowerCase().includes(query);
-
-    const matchesFilter = filterVerdict === 'ALL' || tx.verdict === filterVerdict;
-    return matchesSearch && matchesFilter;
+  // Client-side Verdict Filter applied to MongoDB results
+  const displayedRecords = transactions.filter((tx) => {
+    return filterVerdict === 'ALL' || tx.verdict === filterVerdict;
   });
 
-  // Calculate Metrics
-  const totalVolume = transactions.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  const blockedCount = transactions.filter((t) => t.verdict === 'BLOCKED' || t.verdict === 'HALTED').length;
+  // Operational Telemetry Metrics
+  const totalVolume = transactions.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+  const blockedCount = transactions.filter(
+    (t) => t.verdict === 'BLOCKED' || t.verdict === 'HALTED'
+  ).length;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0e100f] text-[#fffce1] font-sans">
       
-      {/* =================================================================== */}
-      {/* IN-APP TOAST NOTIFICATION MODAL                                     */}
-      {/* =================================================================== */}
+      {/* In-App Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-[#161917] border-2 border-[#0ae448] p-4 rounded-2xl shadow-2xl flex items-start gap-3 transition-all">
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toastMessage.type === 'error' ? 'bg-[#ff3b5c]/20 text-[#ff3b5c]' : 'bg-[#0ae448]/20 text-[#0ae448]'}`}>
-            <i className={`fa-solid ${toastMessage.type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-check'}`}></i>
+          <div
+            className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+              toastMessage.type === 'error'
+                ? 'bg-[#ff3b5c]/20 text-[#ff3b5c]'
+                : 'bg-[#0ae448]/20 text-[#0ae448]'
+            }`}
+          >
+            <i
+              className={`fa-solid ${
+                toastMessage.type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-check'
+              }`}
+            ></i>
           </div>
           <div className="flex-1">
-            <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#0ae448]">{toastMessage.title}</h4>
+            <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-[#0ae448]">
+              {toastMessage.title}
+            </h4>
             <p className="text-xs text-gray-300 mt-0.5">{toastMessage.text}</p>
           </div>
           <button onClick={() => setToastMessage(null)} className="text-gray-400 hover:text-white">
@@ -266,18 +240,18 @@ export default function App() {
         </div>
       )}
 
-      {/* =================================================================== */}
-      {/* IN-APP CONFIRMATION MODAL FOR DELETE                                */}
-      {/* =================================================================== */}
+      {/* In-App Delete Confirmation Modal */}
       {deleteCandidate && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#161917] border border-[#ff3b5c]/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
             <div className="w-12 h-12 rounded-2xl bg-[#ff3b5c]/10 text-[#ff3b5c] border border-[#ff3b5c]/30 flex items-center justify-center text-xl mb-4">
               <i className="fa-solid fa-trash-can"></i>
             </div>
-            <h3 className="text-lg font-bold font-['Outfit'] text-[#fffce1]">Confirm Audit Deletion</h3>
+            <h3 className="text-lg font-bold font-['Outfit'] text-[#fffce1]">Confirm Document Deletion</h3>
             <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-              Are you sure you want to permanently delete transaction record <strong className="text-[#fffce1] font-mono">{deleteCandidate.id}</strong> from your browser's persistent Local Storage?
+              Are you sure you want to permanently remove transaction document{' '}
+              <strong className="text-[#fffce1] font-mono">{deleteCandidate.txId}</strong> from the
+              MongoDB collection?
             </p>
             <div className="mt-6 flex items-center justify-end gap-3 font-mono text-xs font-bold">
               <button
@@ -290,32 +264,43 @@ export default function App() {
                 onClick={confirmDelete}
                 className="px-4 py-2.5 rounded-xl bg-[#ff3b5c] text-black font-bold uppercase hover:bg-rose-400 transition-all shadow-lg shadow-[#ff3b5c]/20"
               >
-                Yes, Delete Record
+                Yes, Delete Document
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* =================================================================== */}
-      {/* APPLICATION HEADER & NAVIGATION                                     */}
-      {/* =================================================================== */}
+      {/* Header & Navigation */}
       <header className="sticky top-0 z-40 bg-[#0e100f]/90 backdrop-blur-xl border-b border-[#222724]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-2xl bg-[#161917] border border-[#0ae448]/50 flex items-center justify-center text-[#0ae448] shadow-[0_0_20px_rgba(10,228,72,0.2)]">
               <i className="fa-solid fa-eye text-xl"></i>
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xl font-black font-['Outfit'] tracking-tight text-[#fffce1]">
                   Legal <span className="text-[#0ae448]">Eye</span>
                 </span>
-                <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#0ae448]/15 text-[#0ae448] border border-[#0ae448]/40 uppercase tracking-wider">
-                  Autonomous Pre-Settlement Gateway
+                <span
+                  className={`text-[9px] font-mono font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider flex items-center gap-1.5 ${
+                    serverConnected
+                      ? 'bg-[#0ae448]/15 text-[#0ae448] border-[#0ae448]/40'
+                      : 'bg-[#ff3b5c]/15 text-[#ff3b5c] border-[#ff3b5c]/40'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      serverConnected ? 'bg-[#0ae448] animate-ping' : 'bg-[#ff3b5c]'
+                    }`}
+                  ></span>
+                  {serverConnected ? 'MongoDB API Connected · :3001' : 'API Offline · Start Port 3001'}
                 </span>
               </div>
-              <p className="text-[11px] text-gray-400 font-mono">Real-Time Recourse &amp; Audit Engine</p>
+              <p className="text-[11px] text-gray-400 font-mono">
+                Full-Stack Pre-Settlement Recourse &amp; Document Store
+              </p>
             </div>
           </div>
 
@@ -328,8 +313,8 @@ export default function App() {
                   : 'bg-[#161917] text-gray-400 hover:text-white border border-[#2a302c]'
               }`}
             >
-              <i className="fa-solid fa-table-list"></i>
-              <span>Audit Ledger ({transactions.length})</span>
+              <i className="fa-solid fa-database"></i>
+              <span>MongoDB Ledger ({transactions.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('spec')}
@@ -339,64 +324,102 @@ export default function App() {
                   : 'bg-[#161917] text-gray-400 hover:text-white border border-[#2a302c]'
               }`}
             >
-              <i className="fa-solid fa-shield-halved"></i>
-              <span>Compliance Protocol</span>
+              <i className="fa-solid fa-server"></i>
+              <span>System Architecture</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* =================================================================== */}
-      {/* MAIN CONTENT AREA                                                   */}
-      {/* =================================================================== */}
+      {/* Main Content */}
       <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+        {!serverConnected && !isLoading && (
+          <div className="mb-8 p-4 rounded-2xl bg-[#ff3b5c]/10 border border-[#ff3b5c]/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs font-mono">
+            <div className="flex items-center gap-3 text-rose-300">
+              <i className="fa-solid fa-plug-circle-xmark text-lg text-[#ff3b5c]"></i>
+              <div>
+                <strong className="text-[#fffce1] block">Express Backend Unreachable (http://localhost:3001)</strong>
+                <span>Ensure MongoDB is running and execute <code className="text-[#0ae448]">node server.js</code> inside your server directory.</span>
+              </div>
+            </div>
+            <button
+              onClick={() => fetchTransactions(searchQuery)}
+              className="px-4 py-2 rounded-xl bg-[#ff3b5c] text-black font-bold uppercase hover:bg-rose-400 transition-all shrink-0"
+            >
+              Retry Connection
+            </button>
+          </div>
+        )}
+
         {activeTab === 'crud' ? (
           <div className="space-y-10">
             
-            {/* Top Operational Metrics */}
+            {/* Operational Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-5 rounded-2xl bg-[#161917] border border-[#2a302c]">
-                <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest font-bold">TOTAL RECORDS</div>
-                <div className="text-2xl sm:text-3xl font-black font-['Outfit'] text-[#fffce1] mt-1">{transactions.length}</div>
+                <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest font-bold">
+                  MONGODB DOCUMENTS
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-['Outfit'] text-[#fffce1] mt-1">
+                  {transactions.length}
+                </div>
                 <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                  <i className="fa-solid fa-database text-[#0ae448]"></i> LocalStorage synced
+                  <i className="fa-solid fa-leaf text-[#0ae448]"></i> legalEyeDB.transactions
                 </div>
               </div>
               <div className="p-5 rounded-2xl bg-[#161917] border border-[#2a302c]">
-                <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest font-bold">INTERCEPTED THREATS</div>
-                <div className="text-2xl sm:text-3xl font-black font-['Outfit'] text-[#ff3b5c] mt-1">{blockedCount}</div>
+                <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest font-bold">
+                  INTERCEPTED THREATS
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-['Outfit'] text-[#ff3b5c] mt-1">
+                  {blockedCount}
+                </div>
                 <div className="text-xs text-rose-400/80 mt-1 flex items-center gap-1">
                   <i className="fa-solid fa-ban"></i> Halted &amp; Blocked
                 </div>
               </div>
               <div className="p-5 rounded-2xl bg-[#161917] border border-[#2a302c]">
-                <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest font-bold">CLEARED PAYMENTS</div>
-                <div className="text-2xl sm:text-3xl font-black font-['Outfit'] text-[#0ae448] mt-1">{transactions.length - blockedCount}</div>
+                <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest font-bold">
+                  CLEARED PAYMENTS
+                </div>
+                <div className="text-2xl sm:text-3xl font-black font-['Outfit'] text-[#0ae448] mt-1">
+                  {transactions.length - blockedCount}
+                </div>
                 <div className="text-xs text-[#0ae448]/80 mt-1 flex items-center gap-1">
                   <i className="fa-solid fa-check-double"></i> Verified safe
                 </div>
               </div>
               <div className="p-5 rounded-2xl bg-[#161917] border border-[#2a302c]">
-                <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest font-bold">AUDITED VALUE</div>
+                <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest font-bold">
+                  AUDITED VOLUME
+                </div>
                 <div className="text-xl sm:text-2xl font-black font-['Outfit'] text-[#9d95ff] mt-1 truncate">
                   ₹{totalVolume.toLocaleString('en-IN')}
                 </div>
                 <div className="text-xs text-[#9d95ff]/80 mt-1 flex items-center gap-1">
-                  <i className="fa-solid fa-money-bill-wave"></i> Multi-rail volume
+                  <i className="fa-solid fa-money-bill-wave"></i> BSON aggregated
                 </div>
               </div>
             </div>
 
-            {/* FORM COMPONENT (CREATE & UPDATE) */}
+            {/* CREATE & UPDATE FORM */}
             <div className="p-7 sm:p-9 rounded-3xl bg-[#161917] border border-[#2a302c] shadow-2xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-[#222724] gap-2 mb-6">
                 <div>
                   <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#0ae448]/10 text-[#0ae448] border border-[#0ae448]/30 text-[10px] font-mono font-bold uppercase mb-2">
-                    <i className="fa-solid fa-sliders"></i> React Form &amp; State Handling
+                    <i className="fa-solid fa-cloud-arrow-up"></i> Express REST API Dispatch
                   </div>
                   <h2 className="text-lg font-bold font-['Outfit'] text-[#fffce1] flex items-center gap-2">
-                    <i className={`fa-solid ${editingTransaction ? 'fa-pen-to-square text-[#9d95ff]' : 'fa-circle-plus text-[#0ae448]'}`}></i>
-                    {editingTransaction ? `Modify Record: ${editingTransaction.id}` : 'Create New Transaction Audit Log'}
+                    <i
+                      className={`fa-solid ${
+                        editingTransaction
+                          ? 'fa-pen-to-square text-[#9d95ff]'
+                          : 'fa-circle-plus text-[#0ae448]'
+                      }`}
+                    ></i>
+                    {editingTransaction
+                      ? `Update MongoDB Document: ${editingTransaction.txId}`
+                      : 'Insert New Transaction Audit Document'}
                   </h2>
                 </div>
                 {editingTransaction && (
@@ -412,7 +435,7 @@ export default function App() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   
-                  {/* Field 1: Sender VPA (Text Input) */}
+                  {/* Sender VPA */}
                   <div>
                     <label className="block text-xs font-mono font-bold text-gray-300 uppercase tracking-wider mb-2">
                       Sender Account / VPA *
@@ -433,7 +456,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Field 2: Beneficiary VPA (Text Input) */}
+                  {/* Beneficiary Handle */}
                   <div>
                     <label className="block text-xs font-mono font-bold text-gray-300 uppercase tracking-wider mb-2">
                       Beneficiary Handle *
@@ -454,13 +477,13 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Field 3: Amount (Number Input) */}
+                  {/* Transfer Quantum */}
                   <div>
                     <label className="block text-xs font-mono font-bold text-gray-300 uppercase tracking-wider mb-2">
                       Transfer Quantum (₹) *
                     </label>
                     <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500 pointer-events-none text-xs font-mono font-bold text-[#0ae448]">
+                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-xs font-mono font-bold text-[#0ae448]">
                         ₹
                       </span>
                       <input
@@ -477,10 +500,10 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Field 4: Payment Rail (Select Dropdown) */}
+                  {/* Clearing Rail */}
                   <div>
                     <label className="block text-xs font-mono font-bold text-gray-300 uppercase tracking-wider mb-2">
-                      Clearing Rail (Dropdown)
+                      Clearing Rail
                     </label>
                     <select
                       name="rail"
@@ -494,10 +517,10 @@ export default function App() {
                     </select>
                   </div>
 
-                  {/* Field 5: Hardware Fingerprint (Select Dropdown) */}
+                  {/* Hardware Profile */}
                   <div>
                     <label className="block text-xs font-mono font-bold text-gray-300 uppercase tracking-wider mb-2">
-                      Hardware Profile (Dropdown)
+                      Hardware Profile
                     </label>
                     <select
                       name="device"
@@ -512,10 +535,10 @@ export default function App() {
                     </select>
                   </div>
 
-                  {/* Field 6: Double-Check Verdict (Radio Buttons) */}
+                  {/* Audit Verdict Radio Group */}
                   <div>
                     <label className="block text-xs font-mono font-bold text-gray-300 uppercase tracking-wider mb-2">
-                      Audit Verdict (Radio Group)
+                      Audit Verdict
                     </label>
                     <div className="grid grid-cols-3 gap-2">
                       {[
@@ -549,23 +572,23 @@ export default function App() {
                     className="w-full sm:w-auto px-7 py-3 rounded-xl bg-[#0ae448] hover:bg-[#09d242] text-black font-extrabold text-xs font-mono uppercase tracking-wider transition-all shadow-lg shadow-[#0ae448]/20 flex items-center justify-center gap-2"
                   >
                     <i className={`fa-solid ${editingTransaction ? 'fa-check' : 'fa-plus'}`}></i>
-                    {editingTransaction ? 'Commit Updates to Storage' : 'Create & Save Audit Record'}
+                    {editingTransaction ? 'PUT Update to MongoDB' : 'POST Record to MongoDB'}
                   </button>
                 </div>
               </form>
             </div>
 
-            {/* TRANSACTION LEDGER TABLE (READ, UPDATE, DELETE & SEARCH) */}
+            {/* READ, SEARCH, UPDATE & DELETE TABLE */}
             <div className="p-7 sm:p-9 rounded-3xl bg-[#161917] border border-[#2a302c] shadow-2xl space-y-6">
               
-              {/* Filter and Search Controls */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-[#222724]">
                 <div>
                   <h3 className="text-lg font-bold font-['Outfit'] text-[#fffce1]">
-                    Persistent Audit Records (Read, Filter, Update, Delete)
+                    MongoDB Transaction Collection
                   </h3>
                   <p className="text-xs text-gray-400 font-mono mt-0.5">
-                    Displaying {filteredRecords.length} of {transactions.length} total entries stored in <code className="text-[#0ae448]">localStorage</code>
+                    Showing {displayedRecords.length} document(s) from{' '}
+                    <code className="text-[#0ae448]">mongodb://127.0.0.1:27017/legalEyeDB</code>
                   </p>
                 </div>
 
@@ -588,7 +611,7 @@ export default function App() {
                     ))}
                   </div>
 
-                  {/* Search Bar (Bonus Task) */}
+                  {/* Live MongoDB Search Bar */}
                   <div className="relative w-full sm:w-72">
                     <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-500 pointer-events-none text-xs">
                       <i className="fa-solid fa-magnifying-glass"></i>
@@ -597,7 +620,7 @@ export default function App() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search ID, handle, rail..."
+                      placeholder="Search MongoDB collection..."
                       className="w-full bg-[#0e100f] border border-[#2a302c] rounded-xl pl-9 pr-4 py-2 text-xs text-[#fffce1] font-mono focus:outline-none focus:border-[#0ae448] transition-all"
                     />
                     {searchQuery && (
@@ -613,7 +636,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Responsive Records Table */}
+              {/* Table */}
               <div className="overflow-x-auto rounded-2xl border border-[#2a302c]">
                 <table className="w-full text-left text-xs font-mono">
                   <thead className="bg-[#0e100f] text-gray-400 uppercase text-[11px] border-b border-[#222724]">
@@ -628,43 +651,38 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#222724] bg-[#161917]">
-                    {filteredRecords.length === 0 ? (
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan="7" className="p-10 text-center text-gray-400">
+                          Querying MongoDB documents via Express REST API...
+                        </td>
+                      </tr>
+                    ) : displayedRecords.length === 0 ? (
                       <tr>
                         <td colSpan="7" className="p-10 text-center text-gray-500 italic">
-                          <i className="fa-solid fa-folder-open text-3xl mb-3 block text-gray-600"></i>
-                          No audit records found matching query &ldquo;{searchQuery}&rdquo;.
+                          <i className="fa-solid fa-database text-3xl mb-3 block text-gray-600"></i>
+                          No documents found in MongoDB. Use the form above to insert your first transaction record.
                         </td>
                       </tr>
                     ) : (
-                      filteredRecords.map((tx) => (
-                        <tr key={tx.id} className="hover:bg-[#0e100f]/60 transition-colors">
-                          
-                          {/* Timestamp */}
+                      displayedRecords.map((tx) => (
+                        <tr key={tx._id} className="hover:bg-[#0e100f]/60 transition-colors">
                           <td className="p-4 text-gray-400 whitespace-nowrap">{tx.timestamp}</td>
-                          
-                          {/* ID */}
                           <td className="p-4 font-bold text-[#fffce1] whitespace-nowrap">
-                            <span className="font-mono">{tx.id}</span>
+                            <div>{tx.txId}</div>
+                            <div className="text-[9px] text-gray-500 font-normal">_id: {tx._id.slice(-8)}</div>
                           </td>
-
-                          {/* Participants */}
                           <td className="p-4 whitespace-nowrap">
                             <div className="text-gray-300 font-bold">{tx.sender}</div>
                             <div className="text-[10px] text-gray-500">to {tx.beneficiary}</div>
                           </td>
-
-                          {/* Amount */}
                           <td className="p-4 font-bold text-[#0ae448] whitespace-nowrap">
                             ₹{Number(tx.amount).toLocaleString('en-IN')}
                           </td>
-
-                          {/* Rail & Device */}
                           <td className="p-4 whitespace-nowrap">
                             <div className="text-gray-300">{tx.rail}</div>
                             <div className="text-[10px] text-gray-500">{tx.device}</div>
                           </td>
-
-                          {/* Verdict */}
                           <td className="p-4 whitespace-nowrap">
                             <span
                               className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border ${
@@ -678,8 +696,6 @@ export default function App() {
                               {tx.verdict} ({tx.riskScore}%)
                             </span>
                           </td>
-
-                          {/* Action Buttons (Update & Delete) */}
                           <td className="p-4 text-right space-x-2 whitespace-nowrap">
                             <button
                               onClick={() => {
@@ -687,19 +703,18 @@ export default function App() {
                                 window.scrollTo({ top: 150, behavior: 'smooth' });
                               }}
                               className="px-3 py-1.5 rounded-xl bg-[#0e100f] hover:bg-[#2a302c] text-[#9d95ff] border border-[#2a302c] text-xs font-bold transition-all"
-                              title="Edit Record"
+                              title="Edit Document"
                             >
                               <i className="fa-solid fa-pen-to-square mr-1"></i> Edit
                             </button>
                             <button
                               onClick={() => setDeleteCandidate(tx)}
                               className="px-3 py-1.5 rounded-xl bg-[#0e100f] hover:bg-[#ff3b5c]/20 text-[#ff3b5c] border border-[#ff3b5c]/30 text-xs font-bold transition-all"
-                              title="Delete Record"
+                              title="Delete Document"
                             >
                               <i className="fa-solid fa-trash-can mr-1"></i> Delete
                             </button>
                           </td>
-
                         </tr>
                       ))
                     )}
@@ -711,74 +726,60 @@ export default function App() {
 
           </div>
         ) : (
-          /* =============================================================== */
-          /* REGULATORY COMPLIANCE & ARCHITECTURAL SPECIFICATION             */
-          /* =============================================================== */
+          /* System Architecture View */
           <div className="p-8 sm:p-12 rounded-3xl bg-[#161917] border border-[#2a302c] shadow-2xl space-y-8">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0ae448]/15 border border-[#0ae448]/40 text-[#0ae448] text-xs font-mono font-bold uppercase mb-3">
-                <i className="fa-solid fa-shield-halved"></i> Statutory Compliance &amp; Protocol Standards
+                <i className="fa-solid fa-network-wired"></i> Full-Stack Pipeline Architecture
               </div>
               <h2 className="text-2xl sm:text-3xl font-black font-['Outfit'] text-[#fffce1]">
-                Institutional Settlement &amp; Recourse Architecture
+                End-to-End MERN Telemetry &amp; Document Persistence
               </h2>
               <p className="text-sm text-gray-400 mt-2 leading-relaxed">
-                Operating directly in the pre-clearing pathway across modern instant payment rails (UPI 2.0, FedNow, and SEPA Instant) to enforce deterministic zero-loss recourse before ledger settlement.
+                Legal Eye couples a reactive Vite client on Port 5173 with an asynchronous Node.js and Express.js REST gateway on Port 3001, enforcing Mongoose schema validation before committing BSON documents to MongoDB on Port 27017.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-mono text-xs">
               <div className="p-5 rounded-2xl bg-[#0e100f] border border-[#2a302c] space-y-2">
-                <div className="text-[#0ae448] font-bold text-sm">1. Deterministic State &amp; Atomic Integrity</div>
+                <div className="text-[#0ae448] font-bold text-sm">POST /transactions &middot; Document Ingestion</div>
                 <p className="text-gray-400 font-sans">
-                  Transactional records are immutably buffered through declarative component state. Real-time reconciliation eliminates latency-induced double-spend and unauthorized balance drain.
+                  Validates sender VPA, beneficiary handle, and transfer quantum before computing anomaly risk scores and persisting documents via Mongoose.
                 </p>
               </div>
 
               <div className="p-5 rounded-2xl bg-[#0e100f] border border-[#2a302c] space-y-2">
-                <div className="text-[#9d95ff] font-bold text-sm">2. Non-Volatile Client Ledger Synchronization</div>
+                <div className="text-[#9d95ff] font-bold text-sm">GET /transactions &amp; /search/:query</div>
                 <p className="text-gray-400 font-sans">
-                  Continuous client-side persistence prevents audit footprint loss during transient network disconnects, maintaining complete forensic evidence trails across sessions.
+                  Executes indexed BSON queries and case-insensitive regular expression matching across transaction identifiers, rails, and hardware fingerprints.
                 </p>
               </div>
 
               <div className="p-5 rounded-2xl bg-[#0e100f] border border-[#2a302c] space-y-2">
-                <div className="text-amber-400 font-bold text-sm">3. Multi-Rail Regulatory Calibration</div>
+                <div className="text-amber-400 font-bold text-sm">PUT /transactions/:id &middot; Atomic Modification</div>
                 <p className="text-gray-400 font-sans">
-                  Dynamic rules enforce jurisdiction-specific mandates (RBI Master Directions for UPI, EU DORA for SEPA Instant, and FinCEN thresholds for FedNow) with automated velocity ceilings.
+                  Targets documents by MongoDB ObjectId (<code className="text-amber-300">_id</code>) to recalibrate verdict states and risk scores in real time.
                 </p>
               </div>
 
               <div className="p-5 rounded-2xl bg-[#0e100f] border border-[#2a302c] space-y-2">
-                <div className="text-[#ff3b5c] font-bold text-sm">4. Sub-Millisecond Anomaly Quarantine</div>
+                <div className="text-[#ff3b5c] font-bold text-sm">DELETE /transactions/:id &middot; Purging</div>
                 <p className="text-gray-400 font-sans">
-                  High-risk payments flagged by SIM-swap attestation, impossible geographic velocity, or abnormal quantum spikes are quarantined before permanent settlement occurs.
+                  Removes verified false-positive records directly from the MongoDB collection with immediate UI state reconciliation.
                 </p>
               </div>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-[#0e100f] border border-[#2a302c]">
-              <h4 className="text-xs font-mono font-bold text-[#0ae448] uppercase tracking-wider mb-2">
-                Audit Ledger Engine Status
-              </h4>
-              <p className="text-xs text-gray-300 font-mono">
-                Storage Namespace: <span className="text-[#fffce1]">{STORAGE_KEY}</span> | Active Verified Records: <span className="text-[#0ae448] font-bold">{transactions.length}</span> | Security Attestation: Origin-Isolated Non-Volatile Store
-              </p>
             </div>
           </div>
         )}
       </main>
 
-      {/* =================================================================== */}
-      {/* FOOTER                                                              */}
-      {/* =================================================================== */}
+      {/* Footer */}
       <footer className="border-t border-[#222724] bg-[#090b0a] py-8 text-xs font-mono text-gray-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>&copy; 2026 Legal Eye Systems &middot; Autonomous Pre-Settlement Recourse Engine</div>
-          <div className="text-gray-400">Global Financial Cyber-Resilience &amp; Payment Integrity Network</div>
+          <div>&copy; 2026 Legal Eye Systems &middot; Full-Stack Pre-Settlement Recourse Engine</div>
+          <div className="text-gray-400">React &middot; Express &middot; Node.js &middot; MongoDB</div>
         </div>
       </footer>
-
     </div>
   );
 }
